@@ -1,27 +1,9 @@
-import time
 import pandas as pd
 import numpy as np
 import yfinance as yf
 from datetime import datetime
-from threading import Thread
 import os
 import warnings
-
-# 🌐 TINY WEB SERVING LAYER (Keeps Free Hosting Alive)
-from http.server import BaseHTTPRequestHandler, HTTPServer
-class SimpleServer(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
-        self.wfile.write(b"Bot Engine Online")
-
-def run_web_server():
-    server = HTTPServer(('0.0.0.0', int(os.environ.get("PORT", 8080))), SimpleServer)
-    server.serve_forever()
-
-# Start the web server in the background so it doesn't block our trading loop
-Thread(target=run_web_server, daemon=True).start()
 
 warnings.filterwarnings('ignore')
 DB_FILE = "virtual_wallet.csv"
@@ -37,12 +19,16 @@ def save_wallet(wallet):
     pd.DataFrame([wallet]).to_csv(DB_FILE, index=False)
 
 class CloudExchange:
-    def __init__(self): self.wallet = load_wallet()
+    def __init__(self): 
+        self.wallet = load_wallet()
+    
     def get_historical_klines(self, symbol):
         yf_ticker = symbol.replace('USDT', '-USD')
         df = yf.download(yf_ticker, period="120d", interval="1d", progress=False)
-        if isinstance(df.columns, pd.MultiIndex): df.columns = [col[0] for col in df.columns]
+        if isinstance(df.columns, pd.MultiIndex): 
+            df.columns = [col[0] for col in df.columns]
         return [[idx.value // 10**6, float(row['Open']), float(row['High']), float(row['Low']), float(row['Close']), float(row['Volume']), 0, 0, 0, 0, 0, 0] for idx, row in df.iterrows()]
+    
     def execute_market_buy(self, symbol, usdt_amount, current_price):
         asset = symbol.replace('USDT', '')
         if self.wallet['USDT'] >= usdt_amount:
@@ -50,6 +36,7 @@ class CloudExchange:
             self.wallet[asset] += (usdt_amount / current_price)
             print(f"   🟢 LIVE BUY: {symbol} at ${current_price:,.2f}")
             save_wallet(self.wallet)
+            
     def execute_market_sell(self, symbol, current_price):
         asset = symbol.replace('USDT', '')
         if self.wallet[asset] > 0:
@@ -58,52 +45,59 @@ class CloudExchange:
             self.wallet[asset] = 0.0
             save_wallet(self.wallet)
 
-# Infinite Cloud Loop
+# 🚀 Serverless Engine Run
 if __name__ == "__main__":
     exchange = CloudExchange()
     PRODUCTION_UNIVERSE = ['ETHUSDT', 'SOLUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'LTCUSDT', 'LINKUSDT', 'BCHUSDT']
-    print("⚠️ CLOUD CONTAINER ENGINE ARMED...")
+    print("⚠️ CLOUD ENGINE ACTIVATED...")
     
-    while True:
-        try:
-            print(f"\n🤖 LOOP CHECK: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            btc_raw = exchange.get_historical_klines('BTCUSDT')
-            btc_df = pd.DataFrame(btc_raw, columns=['time', 'open', 'high', 'low', 'close', 'vol', 'c_time', 'q_vol', 'trades', 'tb_base', 'tb_quote', 'ignore'])
-            current_btc_close = btc_df['close'].iloc[-1]
-            ema_20 = btc_df['close'].ewm(span=20, adjust=False).mean().iloc[-1]
-            sma_3 = btc_df['close'].rolling(3).mean().iloc[-1]
-            roc_5 = btc_df['close'].pct_change(5).iloc[-1]
+    try:
+        print(f"\n🤖 RUN CHECK: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        btc_raw = exchange.get_historical_klines('BTCUSDT')
+        btc_df = pd.DataFrame(btc_raw, columns=['time', 'open', 'high', 'low', 'close', 'vol', 'c_time', 'q_vol', 'trades', 'tb_base', 'tb_quote', 'ignore'])
+        current_btc_close = btc_df['close'].iloc[-1]
+        ema_20 = btc_df['close'].ewm(span=20, adjust=False).mean().iloc[-1]
+        sma_3 = btc_df['close'].rolling(3).mean().iloc[-1]
+        roc_5 = btc_df['close'].pct_change(5).iloc[-1]
+        
+        regime = "BEAR"
+        if current_btc_close > ema_20: regime = "BULL"
+        elif current_btc_close < ema_20 and roc_5 < -0.05: regime = "OVERSOLD_COOLDOWN"
+        elif current_btc_close > sma_3: regime = "BEAR_SQUEEZE_ABORT"
+
+        print(f"📊 BTC: ${current_btc_close:,.2f} | REGIME: {regime}")
+        wallet = exchange.wallet
+        owned_tickers = [f"{asset}USDT" for asset, qty in wallet.items() if asset != 'USDT' and qty > 0]
+
+        if regime == "BULL":
+            mom_scores, last_prices = {}, {}
+            for coin in PRODUCTION_UNIVERSE:
+                raw = exchange.get_historical_klines(coin)
+                df = pd.DataFrame(raw, columns=['time', 'open', 'high', 'low', 'close', 'vol', 'c_time', 'q_vol', 'trades', 'tb_base', 'tb_quote', 'ignore'])
+                mom_scores[coin] = (df['close'].iloc[-1] / df['close'].iloc[-45]) - 1
+                last_prices[coin] = df['close'].iloc[-1]
+            top_3 = sorted(mom_scores, key=mom_scores.get, reverse=True)[:3]
             
-            regime = "BEAR"
-            if current_btc_close > ema_20: regime = "BULL"
-            elif current_btc_close < ema_20 and roc_5 < -0.05: regime = "OVERSOLD_COOLDOWN"
-            elif current_btc_close > sma_3: regime = "BEAR_SQUEEZE_ABORT"
-
-            print(f"📊 BTC: ${current_btc_close:,.2f} | REGIME: {regime}")
-            wallet = exchange.wallet
-            owned_tickers = [f"{asset}USDT" for asset, qty in wallet.items() if asset != 'USDT' and qty > 0]
-
-            if regime == "BULL":
-                mom_scores, last_prices = {}, {}
-                for coin in PRODUCTION_UNIVERSE:
-                    raw = exchange.get_historical_klines(coin)
-                    df = pd.DataFrame(raw, columns=['time', 'open', 'high', 'low', 'close', 'vol', 'c_time', 'q_vol', 'trades', 'tb_base', 'tb_quote', 'ignore'])
-                    mom_scores[coin] = (df['close'].iloc[-1] / df['close'].iloc[-45]) - 1
-                    last_prices[coin] = df['close'].iloc[-1]
-                top_3 = sorted(mom_scores, key=mom_scores.get, reverse=True)[:3]
-                
-                for held_coin in owned_tickers:
-                    if held_coin not in top_3: exchange.execute_market_sell(held_coin, last_prices[held_coin])
-                alloc = wallet['USDT'] / max(1, (3 - len([x for x in top_3 if x in owned_tickers])))
+            for held_coin in owned_tickers:
+                if held_coin not in top_3: exchange.execute_market_sell(held_coin, last_prices[held_coin])
+            
+            # Recalculate wallet cash balance after potential sells
+            wallet = load_wallet()
+            needed_slots = 3 - len([x for x in top_3 if x in owned_tickers])
+            
+            if needed_slots > 0:
+                alloc = wallet['USDT'] / needed_slots
                 for target_coin in top_3:
-                    if target_coin not in owned_tickers and alloc > 10: exchange.execute_market_buy(target_coin, alloc, last_prices[target_coin])
-            else:
-                for held_coin in owned_tickers:
-                    raw = exchange.get_historical_klines(held_coin)
-                    exchange.execute_market_sell(held_coin, float(raw[-1][4]))
-                    
-            print(f"💼 CURRENT PORTFOLIO: Cash: ${wallet['USDT']:,.2f}")
-            time.sleep(86400) # Check once every 24 hours
-        except Exception as e:
-            print(f"🔥 ERROR: {e}")
-            time.sleep(60)
+                    if target_coin not in owned_tickers and alloc > 10: 
+                        exchange.execute_market_buy(target_coin, alloc, last_prices[target_coin])
+        else:
+            for held_coin in owned_tickers:
+                raw = exchange.get_historical_klines(held_coin)
+                exchange.execute_market_sell(held_coin, float(raw[-1][4]))
+                
+        # Final Printout
+        wallet = load_wallet()
+        print(f"💼 END RUN PORTFOLIO: Cash: ${wallet['USDT']:,.2f}")
+        print("📥 WALLET UPDATE WRITTEN TO LEDGER. SHUTTING DOWN ENGINE.")
+    except Exception as e:
+        print(f"🔥 ERROR: {e}")
