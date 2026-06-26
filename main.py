@@ -51,10 +51,11 @@ if __name__ == "__main__":
     PRODUCTION_UNIVERSE = ['ETHUSDT', 'SOLUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'LTCUSDT', 'LINKUSDT', 'BCHUSDT']
     print("⚠️ CLOUD ENGINE ACTIVATED...")
     
-    try:
+   try:
         import datetime as dt
-hk_time = dt.datetime.utcnow() + dt.timedelta(hours=8)
-print(f"\n🤖 RUN CHECK: {hk_time.strftime('%Y-%m-%d %H:%M:%S')} (HKT)")
+        hk_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=8)
+        print(f"\n🤖 RUN CHECK: {hk_time.strftime('%Y-%m-%d %H:%M:%S')} (HKT)")
+        
         btc_raw = exchange.get_historical_klines('BTCUSDT')
         btc_df = pd.DataFrame(btc_raw, columns=['time', 'open', 'high', 'low', 'close', 'vol', 'c_time', 'q_vol', 'trades', 'tb_base', 'tb_quote', 'ignore'])
         current_btc_close = btc_df['close'].iloc[-1]
