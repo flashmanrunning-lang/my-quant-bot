@@ -1,0 +1,37 @@
+name: Run Daily Quant Bot
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs automatically at midnight UTC every day
+  workflow_dispatch:     # Allows manually clicking a button to run it instantly
+
+permissions:
+  contents: write        # Required so GitHub Actions can save changes back to your CSV file
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository Code
+      uses: actions/checkout@v3
+
+    - name: Set Up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install Libraries
+      run: |
+        pip install pandas numpy yfinance
+
+    - name: Run Trading Strategy
+      run: |
+        python main.py
+
+    - name: Save Wallet Updates
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git add virtual_wallet.csv
+        git commit -m "Update virtual wallet ledger [skip ci]" || echo "No changes to wallet"
+        git push
