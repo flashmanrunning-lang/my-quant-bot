@@ -2,7 +2,7 @@ name: Run Daily Quant Bot
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Runs automatically at midnight UTC every day
+    - cron: '0 */3 * * *'  # Runs automatically at midnight UTC every day
   workflow_dispatch:     # Allows manually clicking a button to run it instantly
 
 permissions:
