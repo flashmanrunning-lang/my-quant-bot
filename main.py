@@ -24,7 +24,8 @@ class CloudExchange:
     
     def get_historical_klines(self, symbol):
         yf_ticker = symbol.replace('USDT', '-USD')
-        df = yf.download(yf_ticker, period="120d", interval="1d", progress=False)
+        # ⚡ SWITCH TO INTRADAY: 1-hour interval intervals for sharper, faster execution
+        df = yf.download(yf_ticker, period="30d", interval="1h", progress=False)
         if isinstance(df.columns, pd.MultiIndex): 
             df.columns = [col[0] for col in df.columns]
         return [[idx.value // 10**6, float(row['Open']), float(row['High']), float(row['Low']), float(row['Close']), float(row['Volume']), 0, 0, 0, 0, 0, 0] for idx, row in df.iterrows()]
@@ -46,7 +47,6 @@ class CloudExchange:
             save_wallet(self.wallet)
 
 # 🚀 Serverless Engine Run
-# 🚀 Serverless Engine Run
 if __name__ == "__main__":
     exchange = CloudExchange()
     PRODUCTION_UNIVERSE = ['ETHUSDT', 'SOLUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'LTCUSDT', 'LINKUSDT', 'BCHUSDT']
@@ -60,13 +60,15 @@ if __name__ == "__main__":
         btc_raw = exchange.get_historical_klines('BTCUSDT')
         btc_df = pd.DataFrame(btc_raw, columns=['time', 'open', 'high', 'low', 'close', 'vol', 'c_time', 'q_vol', 'trades', 'tb_base', 'tb_quote', 'ignore'])
         current_btc_close = btc_df['close'].iloc[-1]
+        
+        # Adjust technical calculations for hourly trends (using 20 hours instead of 20 days)
         ema_20 = btc_df['close'].ewm(span=20, adjust=False).mean().iloc[-1]
         sma_3 = btc_df['close'].rolling(3).mean().iloc[-1]
         roc_5 = btc_df['close'].pct_change(5).iloc[-1]
         
         regime = "BEAR"
         if current_btc_close > ema_20: regime = "BULL"
-        elif current_btc_close < ema_20 and roc_5 < -0.05: regime = "OVERSOLD_COOLDOWN"
+        elif current_btc_close < ema_20 and roc_5 < -0.02: regime = "OVERSOLD_COOLDOWN" # Made threshold tighter for intraday volatility
         elif current_btc_close > sma_3: regime = "BEAR_SQUEEZE_ABORT"
 
         print(f"📊 BTC: ${current_btc_close:,.2f} | REGIME: {regime}")
@@ -78,6 +80,7 @@ if __name__ == "__main__":
             for coin in PRODUCTION_UNIVERSE:
                 raw = exchange.get_historical_klines(coin)
                 df = pd.DataFrame(raw, columns=['time', 'open', 'high', 'low', 'close', 'vol', 'c_time', 'q_vol', 'trades', 'tb_base', 'tb_quote', 'ignore'])
+                # Momentum calculated over the past 45 hours
                 mom_scores[coin] = (df['close'].iloc[-1] / df['close'].iloc[-45]) - 1
                 last_prices[coin] = df['close'].iloc[-1]
             top_3 = sorted(mom_scores, key=mom_scores.get, reverse=True)[:3]
