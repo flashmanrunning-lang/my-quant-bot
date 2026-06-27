@@ -14,7 +14,7 @@ LEDGER_FILE = "portfolio_ledger.csv"
 PERFORMANCE_FILE = "alpha_performance.csv"
 CHART_FILE = "performance_chart.png" # The new output visual chart
 INITIAL_CASH = 100000.0
-COINS = ['ETH-USD', 'SOL-USD', 'LINK-USD', 'AVAX-USD', 'NEAR-USD', 'ADA-USD', 'DOT-USD', 'POL-USD']
+COINS = ['ETH-USD', 'SOL-USD', 'LINK-USD', 'AVAX-USD', 'NEAR-USD', 'ADA-USD', 'DOT-USD', 'MATIC-USD']
 
 MACRO_TICKERS = {
     '^GSPC': 'S&P 500',
@@ -128,7 +128,7 @@ def calculate_macro_regime():
     data = yf.download(all_tickers, period='60d', interval='1d', progress=False)['Close']
     if data.empty or 'BTC-USD' not in data.columns: return False
 
-    returns = data.pct_change().dropna()
+    returns = data.pct_change(fill_method=None).dropna()
     btc_series = data['BTC-USD']
     btc_ema20 = btc_series.ewm(span=20, adjust=False).mean()
     btc_bull = btc_series.iloc[-1].item() > btc_ema20.iloc[-1].item()
