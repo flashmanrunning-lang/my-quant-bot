@@ -34,11 +34,16 @@ def binance_request(endpoint, method="GET", params=None):
     return response.json()
 
 def get_historical_klines(symbol):
-    url = f"{API_URL}/api/v3/klines"
+    # Historical data is public, so we use the live Binance API for stability
+    url = "https://api.binance.com/api/v3/klines"
     params = {'symbol': symbol, 'interval': '1d', 'limit': 120}
-    data = requests.get(url, params=params).json()
-    return [[int(x[0]), float(x[1]), float(x[2]), float(x[3]), float(x[4]), float(x[5])] for x in data]
+    response = requests.get(url, params=params)
+    data = response.json()
 
+    if isinstance(data, dict):
+        raise Exception(f"Binance API Error: {data.get('msg', data)}")
+
+    return [[int(x[0]), float(x[1]), float(x[2]), float(x[3]), float(x[4]), float(x[5])] for x in data]
 def get_asset_balance(asset):
     account_info = binance_request("/api/v3/account", "GET")
     for balance in account_info.get('balances', []):
