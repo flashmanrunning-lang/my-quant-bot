@@ -2,28 +2,23 @@ name: Run 3-Hour Quant Bot
 
 on:
   schedule:
-    # FIX: Run every 3 hours (at minute 0 of hours 0, 3, 6, 9, 12, 15, 18, 21)
-    - cron: '0 */3 * * *'
-  workflow_dispatch:
+    - cron: '0 */3 * * *'      # Runs automatically every 3 hours
+  workflow_dispatch:          # Allows manually clicking a button to run it instantly
 
 permissions:
-  contents: write
+  contents: write             # Required so GitHub Actions can save changes back to your CSV file
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
-    # OPTIMIZATION: Updated to latest v4 action for node20 compatibility
     - name: Checkout Repository Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
 
-    # OPTIMIZATION: Updated to latest v5 action
     - name: Set Up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v4
       with:
         python-version: '3.10'
-        # OPTIMIZATION: Caches pip dependencies to speed up the run
-        cache: 'pip'
 
     - name: Install Libraries
       run: |
@@ -33,12 +28,12 @@ jobs:
       run: |
         python main.py
 
-    # FIX: Securely push your changes without authentication failures
     - name: Save Wallet Updates
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        # The line below checks if performance_chart.png exists before trying to add it
         git add portfolio_ledger.csv alpha_performance.csv
         if [ -f performance_chart.png ]; then git add performance_chart.png; fi
         git commit -m "Update metrics logs and performance dashboard image [skip ci]" || echo "No changes to commit"
-        git push origin HEAD:${{ github.ref }}
+        git push
