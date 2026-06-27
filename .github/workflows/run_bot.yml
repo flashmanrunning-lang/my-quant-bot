@@ -25,6 +25,9 @@ jobs:
         pip install pandas numpy yfinance
 
     - name: Run Trading Strategy
+      env:
+        BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
+        BINANCE_SECRET_KEY: ${{ secrets.BINANCE_SECRET_KEY }}
       run: |
         python main.py
 
