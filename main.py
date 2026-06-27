@@ -51,7 +51,7 @@ if __name__ == "__main__":
     PRODUCTION_UNIVERSE = ['ETHUSDT', 'SOLUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'LTCUSDT', 'LINKUSDT', 'BCHUSDT']
     print("⚠️ CLOUD ENGINE ACTIVATED...")
     
-   try:
+     try:
         import datetime as dt
         hk_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=8)
         print(f"\n🤖 RUN CHECK: {hk_time.strftime('%Y-%m-%d %H:%M:%S')} (HKT)")
