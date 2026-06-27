@@ -22,7 +22,7 @@ jobs:
 
     - name: Install Libraries
       run: |
-        pip install pandas numpy yfinance
+        pip install pandas numpy yfinance matplotlib
 
     - name: Run Trading Strategy
       run: |
