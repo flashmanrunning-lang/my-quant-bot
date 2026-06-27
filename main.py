@@ -14,7 +14,7 @@ LEDGER_FILE = "portfolio_ledger.csv"
 PERFORMANCE_FILE = "alpha_performance.csv"
 CHART_FILE = "performance_chart.png" # The new output visual chart
 INITIAL_CASH = 100000.0
-COINS = ['ETH-USD', 'SOL-USD', 'LINK-USD', 'AVAX-USD', 'NEAR-USD', 'ADA-USD', 'DOT-USD', 'MATIC-USD']
+COINS = ['ETH-USD', 'SOL-USD', 'LINK-USD', 'AVAX-USD', 'NEAR-USD', 'ADA-USD', 'DOT-USD']
 
 MACRO_TICKERS = {
     '^GSPC': 'S&P 500',
