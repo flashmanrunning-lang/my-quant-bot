@@ -41,9 +41,11 @@ def journal_alpha_performance(strategy_val, current_prices):
     total_bnh_value = 0.0
     
     for coin in COINS:
-        hist = yf.download(coin, period='60d', interval='1d', progress=False)
+        # Change period to '1d' so we anchor the baseline starting price to TODAY
+        hist = yf.download(coin, period='1d', progress=False)
         if not hist.empty:
-            start_price = hist['Close'].iloc[0].item()
+            # Anchor to today's current price as the absolute baseline
+            start_price = hist['Close'].iloc[-1].item() 
             current_price = current_prices.get(coin, start_price)
             token_qty = bnh_base_allocation / start_price
             total_bnh_value += token_qty * current_price
@@ -52,6 +54,7 @@ def journal_alpha_performance(strategy_val, current_prices):
 
     alpha_usdt = strategy_val - total_bnh_value
     alpha_pct = ((strategy_val / total_bnh_value) - 1) * 100
+    # ... rest of the function remains exactly the same ...
     
     new_log = pd.DataFrame([{
         'Timestamp': current_time_str,
