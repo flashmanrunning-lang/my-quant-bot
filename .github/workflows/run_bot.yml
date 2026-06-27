@@ -1,12 +1,12 @@
-name: Run Daily Quant Bot
+name: Run 3-Hour Quant Bot
 
 on:
   schedule:
-    - cron: '0 */3 * * *'  # Runs automatically at midnight UTC every day
-  workflow_dispatch:     # Allows manually clicking a button to run it instantly
+    - cron: '0 */3 * * *'       # Runs automatically every 3 hours
+  workflow_dispatch:          # Allows manually clicking a button to run it instantly
 
 permissions:
-  contents: write        # Required so GitHub Actions can save changes back to your CSV file
+  contents: write             # Required so GitHub Actions can save changes back to your CSV file
 
 jobs:
   run-bot:
@@ -25,9 +25,6 @@ jobs:
         pip install pandas numpy yfinance
 
     - name: Run Trading Strategy
-      env:
-        BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
-        BINANCE_SECRET_KEY: ${{ secrets.BINANCE_SECRET_KEY }}
       run: |
         python main.py
 
@@ -35,6 +32,6 @@ jobs:
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git add virtual_wallet.csv
-        git commit -m "Update virtual wallet ledger [skip ci]" || echo "No changes to wallet"
+        git add portfolio_ledger.csv
+        git commit -m "Update portfolio ledger [skip ci]" || echo "No changes to portfolio"
         git push
