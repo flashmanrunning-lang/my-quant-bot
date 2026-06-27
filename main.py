@@ -46,15 +46,17 @@ class CloudExchange:
             save_wallet(self.wallet)
 
 # 🚀 Serverless Engine Run
+# 🚀 Serverless Engine Run
 if __name__ == "__main__":
     exchange = CloudExchange()
     PRODUCTION_UNIVERSE = ['ETHUSDT', 'SOLUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'LTCUSDT', 'LINKUSDT', 'BCHUSDT']
     print("⚠️ CLOUD ENGINE ACTIVATED...")
     
-     try:
+    try:
         import datetime as dt
         hk_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=8)
         print(f"\n🤖 RUN CHECK: {hk_time.strftime('%Y-%m-%d %H:%M:%S')} (HKT)")
+        
         btc_raw = exchange.get_historical_klines('BTCUSDT')
         btc_df = pd.DataFrame(btc_raw, columns=['time', 'open', 'high', 'low', 'close', 'vol', 'c_time', 'q_vol', 'trades', 'tb_base', 'tb_quote', 'ignore'])
         current_btc_close = btc_df['close'].iloc[-1]
@@ -83,7 +85,6 @@ if __name__ == "__main__":
             for held_coin in owned_tickers:
                 if held_coin not in top_3: exchange.execute_market_sell(held_coin, last_prices[held_coin])
             
-            # Recalculate wallet cash balance after potential sells
             wallet = load_wallet()
             needed_slots = 3 - len([x for x in top_3 if x in owned_tickers])
             
@@ -97,7 +98,6 @@ if __name__ == "__main__":
                 raw = exchange.get_historical_klines(held_coin)
                 exchange.execute_market_sell(held_coin, float(raw[-1][4]))
                 
-        # Final Printout
         wallet = load_wallet()
         print(f"💼 END RUN PORTFOLIO: Cash: ${wallet['USDT']:,.2f}")
         print("📥 WALLET UPDATE WRITTEN TO LEDGER. SHUTTING DOWN ENGINE.")
