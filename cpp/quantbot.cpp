@@ -20,6 +20,7 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -38,6 +39,7 @@ constexpr double INITIAL_CASH = 100000.0;
 constexpr double FEE_RATE = 0.001;         // ASSUMPTION: 0.10% per trade; set to your exchange's real rate
 constexpr double REBALANCE_DRIFT = 0.05;   // re-equalize an unchanged pick set only if a weight is >5 points off
 constexpr std::size_t MIN_MACRO_VOTES = 2;
+const std::string VOO_TICKER = "VOO";    // S&P 500 ETF, shown on the chart as a second benchmark
 
 struct Config {
     fs::path data_dir = "data";
@@ -269,6 +271,9 @@ struct Baseline {
     std::string started;
     double capital = 0;
     std::map<std::string, double> prices, last;
+    bool has_voo = false;       // VOO comparison is optional: it starts the first time a VOO price is available
+    double voo_start = 0;       // VOO price when the comparison started
+    double voo_capital = 0;     // dollars "invested in VOO" at that moment (= the bot's value then)
 };
 
 struct JsonReader {
@@ -328,6 +333,8 @@ bool load_baseline(const Config& cfg, Baseline& b) {
         else if (key == "capital") b.capital = r.number();
         else if (key == "prices") b.prices = r.numobj();
         else if (key == "last_prices") b.last = r.numobj();
+        else if (key == "voo_start") { b.voo_start = r.number(); b.has_voo = true; }
+        else if (key == "voo_capital") b.voo_capital = r.number();
         else throw std::runtime_error("baseline json: unexpected key " + key);
         if (r.peek(',')) { r.expect(','); continue; }
         r.expect('}');
@@ -346,16 +353,21 @@ void write_obj(std::ostream& o, const std::map<std::string, double>& m) {
 
 void save_baseline(const Config& cfg, const Baseline& b) {
     std::ofstream o(cfg.state_dir / "benchmark_baseline.json");
-    o << "{\n  \"started\": \"" << b.started << "\",\n  \"capital\": " << num(b.capital) << ",\n  \"prices\": ";
+    o << "{\n  \"started\": \"" << b.started << "\",\n  \"capital\": " << num(b.capital) << ",\n";
+    if (b.has_voo) o << "  \"voo_start\": " << num(b.voo_start) << ",\n  \"voo_capital\": " << num(b.voo_capital) << ",\n";
+    o << "  \"prices\": ";
     write_obj(o, b.prices);
     o << ",\n  \"last_prices\": ";
     write_obj(o, b.last);
     o << "\n}\n";
 }
 
-Baseline load_or_create_baseline(const Config& cfg, double strategy_val, const std::map<std::string, double>& prices) {
+Baseline load_or_create_baseline(const Config& cfg, double strategy_val, const std::map<std::string, double>& prices,
+                                 std::optional<double> voo_price) {
     Baseline b;
+    bool fresh = false;
     if (!load_baseline(cfg, b)) {
+        fresh = true;
         b.started = cfg.now;
         b.capital = round2(strategy_val);  // benchmark starts level with the bot, so alpha starts at 0%
         for (const auto& c : COINS) {
@@ -367,6 +379,14 @@ Baseline load_or_create_baseline(const Config& cfg, double strategy_val, const s
     for (const auto& c : COINS) {
         auto it = prices.find(c);
         if (it != prices.end()) b.last[c] = it->second;
+    }
+    if (!b.has_voo && voo_price && *voo_price > 0) {
+        // Starts together with the baseline, or later (older baseline files, or VOO data missing on day one),
+        // in which case VOO starts level with the bot's value at that moment.
+        b.has_voo = true;
+        b.voo_start = *voo_price;
+        b.voo_capital = fresh ? b.capital : round2(strategy_val);
+        std::cout << "📌 VOO comparison started at $" << money(*voo_price) << " per share with $" << money(b.voo_capital) << ".\n";
     }
     save_baseline(cfg, b);
     return b;
@@ -385,18 +405,43 @@ double benchmark_value(const Baseline& b, const std::map<std::string, double>& p
 }
 
 // ---------------------------------------------------------------- journals
-std::pair<double, double> journal_alpha(const Config& cfg, double strategy_val, const std::map<std::string, double>& prices) {
-    Baseline b = load_or_create_baseline(cfg, strategy_val, prices);
-    const double bnh = benchmark_value(b, prices);
-    const double alpha_usdt = strategy_val - bnh;
-    const double alpha_pct = bnh != 0.0 ? ((strategy_val / bnh) - 1.0) * 100.0 : 0.0;
+struct Journal {
+    double bnh = 0, alpha_pct = 0;
+    std::optional<double> voo_value;  // what the bot's starting capital would be worth if held in VOO
+};
+
+// Older alpha_performance.csv files have no VOO column: add it (empty for the old rows) so rows stay aligned.
+void ensure_perf_schema(const fs::path& path) {
+    std::ifstream in(path);
+    if (!in) return;
+    std::vector<std::string> lines;
+    std::string line;
+    while (std::getline(in, line)) lines.push_back(line);
+    in.close();
+    if (lines.empty() || lines[0].find("VOO_Hold_Value") != std::string::npos) return;
+    std::ofstream out(path, std::ios::trunc);
+    out << trim(lines[0]) << ",VOO_Hold_Value\n";
+    for (std::size_t i = 1; i < lines.size(); ++i)
+        if (!trim(lines[i]).empty()) out << trim(lines[i]) << ",\n";
+}
+
+Journal journal_alpha(const Config& cfg, double strategy_val, const std::map<std::string, double>& prices,
+                      std::optional<double> voo_price) {
+    Baseline b = load_or_create_baseline(cfg, strategy_val, prices, voo_price);
+    Journal j;
+    j.bnh = benchmark_value(b, prices);
+    const double alpha_usdt = strategy_val - j.bnh;
+    j.alpha_pct = j.bnh != 0.0 ? ((strategy_val / j.bnh) - 1.0) * 100.0 : 0.0;
+    if (b.has_voo && voo_price) j.voo_value = b.voo_capital * (*voo_price) / b.voo_start;
 
     const fs::path path = cfg.state_dir / "alpha_performance.csv";
+    ensure_perf_schema(path);
     const bool exists = fs::exists(path);
     std::ofstream out(path, std::ios::app);
-    if (!exists) out << "Timestamp,Active_Bot_Value,Benchmark_BnH_Value,Alpha_USDT,Alpha_Percent\n";
-    out << cfg.now << "," << fixed2(strategy_val) << "," << fixed2(bnh) << "," << fixed2(alpha_usdt) << "," << fixed2(alpha_pct) << "\n";
-    return {bnh, alpha_pct};
+    if (!exists) out << "Timestamp,Active_Bot_Value,Benchmark_BnH_Value,Alpha_USDT,Alpha_Percent,VOO_Hold_Value\n";
+    out << cfg.now << "," << fixed2(strategy_val) << "," << fixed2(j.bnh) << "," << fixed2(alpha_usdt) << "," << fixed2(j.alpha_pct)
+        << "," << (j.voo_value ? fixed2(*j.voo_value) : std::string()) << "\n";
+    return j;
 }
 
 void log_trades(const Config& cfg, const std::map<std::string, double>& old_qty, const std::map<std::string, double>& new_qty,
@@ -449,14 +494,25 @@ void execute_trading_cycle(const Config& cfg) {
     total = cash;
     for (const auto& kv : holding_values) total += kv.second;
 
-    const auto [bnh, alpha_pct] = journal_alpha(cfg, total, px.current);
+    std::optional<double> voo_price;
+    {
+        Series voo = load_series(cfg, VOO_TICKER);
+        if (!voo.empty()) voo_price = voo.close.back();
+        else std::cout << "⚠️ No VOO data; skipping the VOO comparison this cycle.\n";
+    }
+    const Journal jr = journal_alpha(cfg, total, px.current, voo_price);
     char alpha_buf[64];
-    std::snprintf(alpha_buf, sizeof alpha_buf, "%+.2f", alpha_pct);
+    std::snprintf(alpha_buf, sizeof alpha_buf, "%+.2f", jr.alpha_pct);
     std::cout << "\n==================================================\n"
               << "💳 Active Bot Valuation:  $" << money(total) << " USDT\n"
-              << "📉 Benchmark Buy & Hold:  $" << money(bnh) << " USDT\n"
-              << "🏆 Alpha Outperformance:  " << alpha_buf << "%\n"
-              << "==================================================\n\n";
+              << "📉 Benchmark Buy & Hold:  $" << money(jr.bnh) << " USDT\n"
+              << "🏆 Alpha Outperformance:  " << alpha_buf << "%\n";
+    if (jr.voo_value) {
+        char vs[64];
+        std::snprintf(vs, sizeof vs, "%+.2f", (total / *jr.voo_value - 1.0) * 100.0);
+        std::cout << "📈 Hold VOO (S&P 500):    $" << money(*jr.voo_value) << "  (bot vs VOO: " << vs << "%)\n";
+    }
+    std::cout << "==================================================\n\n";
 
     bool is_bull = false;
     try {

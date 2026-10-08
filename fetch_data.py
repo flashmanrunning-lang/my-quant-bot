@@ -11,7 +11,7 @@ import sys
 import yfinance as yf
 
 COINS = ['ETH-USD', 'SOL-USD', 'LINK-USD', 'AVAX-USD', 'NEAR-USD', 'ADA-USD', 'DOT-USD']
-OTHERS = ['BTC-USD', '^GSPC', 'GC=F', 'DX-Y.NYB', 'CL=F']
+OTHERS = ['BTC-USD', '^GSPC', 'GC=F', 'DX-Y.NYB', 'CL=F', 'VOO']  # VOO is only used for the chart comparison
 DATA_DIR = sys.argv[1] if len(sys.argv) > 1 else 'data'
 
 
