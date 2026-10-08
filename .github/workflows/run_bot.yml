@@ -1,26 +1,22 @@
-name: Run 3-Hour Quant Bot
+name: CI dry run (no commit)
 
 on:
-  schedule:
-    - cron: '0 */3 * * *'      # Runs automatically every 3 hours (GitHub may delay runs)
-  workflow_dispatch:          # Allows manually clicking a button to run it instantly
+  push:
+    branches: [ci-dry-run]     # only this throwaway branch; the real 3-hour job lives on main
 
 permissions:
-  contents: write             # Required so GitHub Actions can save changes back to your CSV files
-
-concurrency:
-  group: quant-bot            # Never let two runs overlap and fight over git push
-  cancel-in-progress: false
+  contents: read               # read-only: this run can never change the repo
 
 jobs:
-  run-bot:
+  dry-run:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash            # bash with pipefail, so `| tee` cannot hide a failure
     steps:
-    - name: Checkout Repository Code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Set Up Python
-      uses: actions/setup-python@v5
+    - uses: actions/setup-python@v5
       with:
         python-version: '3.10'
         cache: 'pip'
@@ -29,23 +25,23 @@ jobs:
       run: pip install -r requirements.txt
 
     - name: Download Market Data
-      run: python fetch_data.py data
+      run: python fetch_data.py data 2>&1 | tee fetch.log
 
     - name: Build C++ Engine
       run: g++ -std=c++17 -O2 -Wall -Wextra -o quantbot cpp/quantbot.cpp
 
     - name: Run Trading Strategy
-      run: ./quantbot --data-dir data
+      run: ./quantbot --data-dir data 2>&1 | tee run.log
 
     - name: Redraw Performance Chart
       run: python plot_chart.py
 
-    - name: Save Wallet Updates
+    - name: Report results as annotations
+      if: always()
       run: |
-        git config --global user.name 'github-actions[bot]'
-        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        for f in portfolio_ledger.csv alpha_performance.csv benchmark_baseline.json trades.csv performance_chart.png; do
-          if [ -f "$f" ]; then git add "$f"; fi
-        done
-        git commit -m "Update metrics logs and performance dashboard image [skip ci]" || echo "No changes to commit"
-        git push
+        echo "::notice title=1 fetch::$(grep -E 'FAIL|tickers written' fetch.log 2>/dev/null | tr '\n' ' ')"
+        echo "::notice title=2 engine::$(tail -n 14 run.log 2>/dev/null | tr '\n' '|')"
+        echo "::notice title=3 ledger::$(tr '\n' '|' < portfolio_ledger.csv 2>/dev/null)"
+        echo "::notice title=4 perf::$(head -1 alpha_performance.csv 2>/dev/null)|$(tail -n 3 alpha_performance.csv 2>/dev/null | tr '\n' '|')"
+        echo "::notice title=5 baseline::$(tr -d '\n ' < benchmark_baseline.json 2>/dev/null | cut -c1-700)"
+        echo "::notice title=6 chart::$(ls -la performance_chart.png 2>&1)"
