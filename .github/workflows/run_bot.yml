@@ -8,21 +8,26 @@ on:
 permissions:
   contents: write             # Required so GitHub Actions can save changes back to your CSV file
 
+concurrency:
+  group: quant-bot            # Never let two runs overlap and fight over git push
+  cancel-in-progress: false
+
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Repository Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set Up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
+        cache: 'pip'
 
     - name: Install Libraries
       run: |
-        pip install pandas numpy yfinance matplotlib
+        pip install -r requirements.txt
 
     - name: Run Trading Strategy
       run: |
@@ -32,8 +37,8 @@ jobs:
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        # The line below checks if performance_chart.png exists before trying to add it
-        git add portfolio_ledger.csv alpha_performance.csv
-        if [ -f performance_chart.png ]; then git add performance_chart.png; fi
+        for f in portfolio_ledger.csv alpha_performance.csv benchmark_baseline.json trades.csv performance_chart.png; do
+          if [ -f "$f" ]; then git add "$f"; fi
+        done
         git commit -m "Update metrics logs and performance dashboard image [skip ci]" || echo "No changes to commit"
         git push
