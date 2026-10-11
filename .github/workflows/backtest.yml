@@ -1,0 +1,40 @@
+name: Backtest v1 vs v2
+
+on:
+  workflow_dispatch:           # run it from the Actions tab any time
+  push:
+    branches: [v2-strategy]    # only runs when the commit message contains [run-backtest]
+
+permissions:
+  contents: write              # results are committed back to the branch that ran
+
+concurrency:
+  group: quant-bot             # shares the live bot's group, so two jobs never race on git push
+  cancel-in-progress: false
+
+jobs:
+  backtest:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run-backtest]')
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install Libraries
+      run: pip install -r requirements.txt
+
+    - name: Download price history
+      run: python backtest/fetch_history.py backtest/prices.csv
+
+    - name: Save price history
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git add backtest/prices.csv
+        git commit -m "Backtest price history [skip ci]" || echo "No changes to commit"
+        git pull --rebase
+        git push
