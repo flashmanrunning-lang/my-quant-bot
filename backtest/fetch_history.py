@@ -13,7 +13,12 @@ from datetime import datetime, timezone
 import pandas as pd
 import yfinance as yf
 
-COINS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'LINK-USD', 'AVAX-USD', 'NEAR-USD', 'ADA-USD', 'DOT-USD']
+LIVE_COINS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'LINK-USD', 'AVAX-USD', 'NEAR-USD', 'ADA-USD', 'DOT-USD']  # what v1/v2 trade live
+# Frozen universe B: the top 10 non-stablecoins by market cap on 2021-02-14, the day before the backtest starts
+# (coinmarketcap.com/historical/20210214). Chosen without knowing the future, so it carries no hindsight bias,
+# unlike LIVE_COINS, which includes coins picked because they did well later (SOL, AVAX, NEAR).
+FROZEN_COINS = ['BTC-USD', 'ETH-USD', 'XRP-USD', 'ADA-USD', 'DOT-USD', 'BNB-USD', 'LTC-USD', 'LINK-USD', 'BCH-USD', 'XLM-USD']
+COINS = LIVE_COINS + [c for c in FROZEN_COINS if c not in LIVE_COINS]
 OTHERS = ['^GSPC', 'GC=F', 'DX-Y.NYB', 'CL=F', 'VOO']  # macro tickers are only used by v1; VOO is a benchmark
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'backtest/prices.csv'
 START = sys.argv[2] if len(sys.argv) > 2 else '2020-06-01'
