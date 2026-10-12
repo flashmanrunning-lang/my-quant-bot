@@ -37,3 +37,13 @@ python tests/voo_test.py ./quantbot
 ```
 
 Config (fee rate, rebalance drift, macro vote minimum) is at the top of `cpp/quantbot.cpp`.
+
+## v2 strategy and the v1-vs-v2 backtest (branch `v2-strategy`)
+
+* `cpp/quantbot_v2.cpp` – new engine (v1 is untouched). BTC trend score -> exposure OFF/50%/100%, per-coin trend filter, top 4 coins,
+  inverse-volatility weights (35% cap), volatility target, 12% drawdown circuit breaker, 0.10% fee. Closed daily bars only.
+* `tests/v2_reference.py` + `tests/v2_test.py` – independent Python re-implementation and 38 checks (parity, look-ahead, live-vs-backtest, mutations).
+* `backtest/fetch_history.py` + `backtest.yml` – download history; `backtest/run_backtest.py` – runs the real v1 binary day by day and v2 `--backtest`;
+  `compare_strategies.py` – metrics + chart (`backtest/comparison_A.png`, `comparison_B.png`, `results_*.csv`, `sensitivity.csv`).
+* Universe A = today's coins (hindsight-biased). Universe B = top-10 non-stablecoins by market cap on 2021-02-14 (the fair test).
+* Not modelled: slippage, spreads, taxes. v1 is run on closed daily bars here (live it uses the intraday price).
