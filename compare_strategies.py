@@ -30,6 +30,9 @@ def metrics(v, invested=None, fees=None, notional=None):
            'Volatility': r.std() * np.sqrt(365), 'Sharpe': r.mean() / r.std() * np.sqrt(365) if r.std() > 0 else np.nan,
            'Sortino': r.mean() / down * np.sqrt(365) if down and down > 0 else np.nan,
            'Max drawdown': dd.min(), 'Worst day': r.min(), 'Days >10% under peak': (dd < -0.10).mean()}
+    if days < 30:  # too short for risk ratios to mean anything
+        for k in ('Volatility', 'Sharpe', 'Sortino'):
+            out[k] = np.nan
     out['Calmar'] = out['CAGR'] / -out['Max drawdown'] if out['Max drawdown'] < 0 and not np.isnan(out['CAGR']) else np.nan
     if invested is not None and invested.notna().any():
         out['Time in cash'] = (invested.reindex(v.index) < 5).mean()
@@ -110,7 +113,7 @@ def main(src, png, title='v1 vs v2', mcsv=None):
     keys = ['Total return', 'CAGR', 'Volatility', 'Sharpe', 'Max drawdown', 'Calmar', 'Worst day', 'Days >10% under peak', 'Time in cash',
             'Turnover / yr', 'Fees paid']
     cell = [[fmt(k, M[n].get(k)) for n in M] for k in keys]
-    t = ax.table(cellText=cell, rowLabels=keys, colLabels=[n.replace(' ', '\n', 1) for n in M], bbox=[0.18, 0, 0.82, 0.88], cellLoc='center')
+    t = ax.table(cellText=cell, rowLabels=keys, colLabels=[n.replace(' ', '\n', 1) for n in M], bbox=[0.18, 0, 0.82, 0.8], cellLoc='center')
     t.auto_set_font_size(False); t.set_fontsize(8); pass
     for (r, cidx), c in t.get_celld().items():
         c.set_edgecolor('#dcdcd8'); c.set_facecolor('#fcfcfb'); c.get_text().set_color('#1a1a1a')

@@ -40,11 +40,26 @@ jobs:
     - name: Redraw Performance Chart
       run: python plot_chart.py
 
+    # ---- v2 paper strategy, run next to v1. continue-on-error: a v2 problem must never stop v1 from saving its wallet.
+    - name: v2 - Download Market Data
+      continue-on-error: true
+      run: python fetch_data_v2.py data_v2
+
+    - name: v2 - Build and Run
+      continue-on-error: true
+      run: |
+        g++ -std=c++17 -O2 -Wall -Wextra -o quantbot_v2 cpp/quantbot_v2.cpp
+        ./quantbot_v2 --data-dir data_v2 --state-dir v2
+
+    - name: v2 - Live Comparison Chart
+      continue-on-error: true
+      run: python compare_live.py data_v2
+
     - name: Save Wallet Updates
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        for f in portfolio_ledger.csv alpha_performance.csv benchmark_baseline.json trades.csv performance_chart.png; do
+        for f in portfolio_ledger.csv alpha_performance.csv benchmark_baseline.json trades.csv performance_chart.png v2/state.txt v2/ledger.csv v2/equity.csv v2/trades.csv compare_live.csv compare_live_baseline.json comparison_chart.png; do
           if [ -f "$f" ]; then git add "$f"; fi
         done
         git commit -m "Update metrics logs and performance dashboard image [skip ci]" || echo "No changes to commit"

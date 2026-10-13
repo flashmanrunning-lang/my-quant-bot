@@ -47,3 +47,9 @@ Config (fee rate, rebalance drift, macro vote minimum) is at the top of `cpp/qua
   `compare_strategies.py` – metrics + chart (`backtest/comparison_A.png`, `comparison_B.png`, `results_*.csv`, `sensitivity.csv`).
 * Universe A = today's coins (hindsight-biased). Universe B = top-10 non-stablecoins by market cap on 2021-02-14 (the fair test).
 * Not modelled: slippage, spreads, taxes. v1 is run on closed daily bars here (live it uses the intraday price).
+
+### Live comparison (added after v2)
+Every 3-hour run now also runs v2 (`v2/` holds its state, ledger, equity curve and trades) and appends v1, v2, BTC and VOO to
+`compare_live.csv` (all rebased to 100,000 on the first row), redrawing `comparison_chart.png`. v2 steps are `continue-on-error`,
+so a v2 failure can never stop v1. The old `alpha_performance.csv` (mostly written before the benchmark fix) is archived in
+`archive/`; v1 starts a fresh one. The live log is days or weeks long, so treat it as a sanity check, not as evidence: the backtest is.
