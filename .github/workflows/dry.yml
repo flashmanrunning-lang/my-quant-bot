@@ -1,0 +1,17 @@
+name: Dry run
+on:
+  push:
+    branches: [v2-live]
+jobs:
+  dry:
+    if: contains(github.event.head_commit.message, '[dry-run]')
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with: {python-version: '3.10', cache: 'pip'}
+    - run: pip install -r requirements.txt
+    - run: python fetch_data.py data && python fetch_data_v2.py data_v2
+    - run: g++ -std=c++17 -O2 -Wall -Wextra -o quantbot cpp/quantbot.cpp && g++ -std=c++17 -O2 -Wall -Wextra -o quantbot_v2 cpp/quantbot_v2.cpp
+    - run: ./quantbot --data-dir data && ./quantbot_v2 --data-dir data_v2 --state-dir v2
+    - run: python plot_chart.py && python compare_live.py data_v2 && ls && cat compare_live.csv alpha_performance.csv v2/equity.csv && head -3 v2/ledger.csv
