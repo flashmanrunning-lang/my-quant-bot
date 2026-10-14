@@ -1,4 +1,4 @@
-last_bar=2026-10-12
+last_bar=2026-10-13
 regime=2
 pending=-1
 pending_n=0
