@@ -90,9 +90,14 @@ def main(src, png, title='v1 vs v2', mcsv=None):
         ax.plot(idx, v, color=c, lw=1.6, ls=ls, label=n)
         ax.annotate(f'{v.dropna().iloc[-1]:,.0f}', (idx[v.notna().values][-1], v.dropna().iloc[-1]), xytext=(4, 0),
                     textcoords='offset points', va='center', fontsize=8, color='#1a1a1a')
-    ax.set_yscale('log'); ax.set_yticks([50, 100, 200, 400, 800]); ax.set_yticklabels(['50', '100', '200', '400', '800'])
+    allv = pd.concat([df[k] / df[k].dropna().iloc[0] * 100 for k, *_ in ser]).dropna()
+    if allv.max() / allv.min() > 3:  # long history: log scale with clean ticks
+        ax.set_yscale('log'); ticks = [t for t in (25, 50, 100, 200, 400, 800, 1600) if allv.min() * 0.8 < t < allv.max() * 1.3]
+        ax.set_yticks(ticks); ax.set_yticklabels([str(t) for t in ticks]); scale_note = 'log scale'
+    else:  # short history: linear, zoomed to the data
+        pad = max((allv.max() - allv.min()) * 0.15, 0.2); ax.set_ylim(allv.min() - pad, allv.max() + pad); scale_note = 'linear'
     ax.yaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
-    ax.set_title(f'{title}: growth of 100 (log scale)', loc='left', fontsize=12, fontweight='bold')
+    ax.set_title(f'{title}: growth of 100 ({scale_note})', loc='left', fontsize=12, fontweight='bold')
     ax.legend(ncol=5, frameon=False, loc='upper left', fontsize=9)
 
     ax = fig.add_subplot(gs[1, :]); style(ax)
@@ -113,7 +118,7 @@ def main(src, png, title='v1 vs v2', mcsv=None):
     keys = ['Total return', 'CAGR', 'Volatility', 'Sharpe', 'Max drawdown', 'Calmar', 'Worst day', 'Days >10% under peak', 'Time in cash',
             'Turnover / yr', 'Fees paid']
     cell = [[fmt(k, M[n].get(k)) for n in M] for k in keys]
-    t = ax.table(cellText=cell, rowLabels=keys, colLabels=[n.replace(' ', '\n', 1) for n in M], bbox=[0.18, 0, 0.82, 0.8], cellLoc='center')
+    t = ax.table(cellText=cell, rowLabels=keys, colLabels=[n.split(' ')[0] if n.split(' ')[0] != 'Equal-weight' else 'Basket' for n in M], bbox=[0.18, 0, 0.82, 0.8], cellLoc='center')
     t.auto_set_font_size(False); t.set_fontsize(8); pass
     for (r, cidx), c in t.get_celld().items():
         c.set_edgecolor('#dcdcd8'); c.set_facecolor('#fcfcfb'); c.get_text().set_color('#1a1a1a')
