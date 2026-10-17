@@ -1,5 +1,21 @@
 # my-quant-bot
 
+## Where to look for results (start here)
+
+| I want to see... | Open |
+|---|---|
+| **Does v2 beat v1 and the market? (the real evidence)** | [`backtest/comparison_B.png`](backtest/comparison_B.png) (fair test) and [`backtest/comparison_B_metrics.csv`](backtest/comparison_B_metrics.csv). `comparison_A.png` uses today's coins, so it flatters v2. |
+| How sensitive v2 is to its settings | [`backtest/sensitivity.csv`](backtest/sensitivity.csv) |
+| **How both bots are doing live right now** | [`comparison_chart.png`](comparison_chart.png) (v1 vs v2 vs BTC vs VOO) and [`compare_live.csv`](compare_live.csv). Updated every 3 hours; only days long, so a sanity check, not proof. |
+| v1 alone live (vs its own coins and VOO) | [`performance_chart.png`](performance_chart.png), [`alpha_performance.csv`](alpha_performance.csv) |
+| v1 holdings / trades | [`portfolio_ledger.csv`](portfolio_ledger.csv), [`trades.csv`](trades.csv) |
+| v2 holdings / equity / trades | [`v2/ledger.csv`](v2/ledger.csv), [`v2/equity.csv`](v2/equity.csv), [`v2/trades.csv`](v2/trades.csv) |
+| Strategy code | v1: `cpp/quantbot.cpp` · v2: `cpp/quantbot_v2.cpp` |
+| Old v1 log (pre benchmark-fix, not comparable) | `archive/` |
+
+All trading is simulated with fake money. The charts and CSVs above are rewritten automatically by GitHub Actions; the files in
+`backtest/` only change when the backtest is re-run by hand.
+
 Paper-trading crypto bot. Every 3 hours (GitHub Actions) it picks the top-3 positive 45-day momentum coins
 from a fixed universe, holds them equal-weight when a macro regime filter is risk-on, and otherwise sits in cash.
 
