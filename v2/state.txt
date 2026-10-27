@@ -1,7 +1,7 @@
-last_bar=2026-10-25
+last_bar=2026-10-26
 regime=2
-pending=-1
-pending_n=0
+pending=1
+pending_n=1
 c1=1
 peak=100000
 breaker=0
