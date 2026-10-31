@@ -1,11 +1,11 @@
-last_bar=2026-10-29
+last_bar=2026-10-30
 regime=2
-pending=1
+pending=0
 pending_n=1
 c1=0
 peak=100000
 breaker=1
-cooldown_left=5
+cooldown_left=4
 cash=87680.125615852739
 fees=486.28685064978998
 notional=486286.85064979002
